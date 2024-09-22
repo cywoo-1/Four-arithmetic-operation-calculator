@@ -1,0 +1,337 @@
+import re
+import tkinter as tk
+import random
+from fractions import Fraction
+from tkinter import font
+from tkinter import ttk
+def infix_converts_suffixes(expression):        #前缀表达式转后缀表达式
+    precedence = {'+': 1, '-': 1, '*': 2, '/': 2}
+    stack = []
+    postfix = []
+    for char in expression:
+        if char.isalnum():
+            postfix.append(char)
+        elif char == '(':
+            stack.append(char)
+        elif char == ')':
+            while stack and stack[-1]!= '(':
+                postfix.append(stack.pop())
+            stack.pop()
+        else:
+            while stack and stack[-1]!= '(' and precedence[char] <= precedence.get(stack[-1], 0):
+                postfix.append(stack.pop())
+            stack.append(char)
+    while stack:
+        postfix.append(stack.pop())
+    return calculation(postfix)
+
+def calculation(math_suffix):       # 后缀表达式的计算
+    if len(math_suffix) <= 2:
+        return math_suffix[0]
+    num = 0
+    for i in range(0, len(math_suffix)):
+        if (math_suffix[i] >= '0') and (math_suffix[i] <= '9'):
+            math_suffix[i] = int(math_suffix[i])
+            continue
+        else:
+            match math_suffix[i]:
+                case '/':
+                    temp2 = Fraction(math_suffix[i - 2])
+                    temp1 = Fraction(math_suffix[i - 1])
+                    num = Fraction(temp2, temp1)
+                case '*':
+                    num = math_suffix[i - 2] * math_suffix[i - 1]
+                case '+':
+                    num = math_suffix[i - 2] + math_suffix[i - 1]
+                case '-':
+                    num = math_suffix[i - 2] - math_suffix[i - 1]
+            math_suffix.pop(i)
+            math_suffix.pop(i - 1)
+            math_suffix.pop(i - 2)
+            math_suffix.insert(i - 2, num)
+            math_suffix.insert(0, ' ')
+            math_suffix.insert(0, ' ')
+    return num
+
+def random_generation(r, n):   #用于生成算法      # -r 参数控制题目中数值（自然数、真分数和真分数分母）的范围    -n 参数控制生成题目的个数
+    if r>9:
+        print("请给出合理的取值范围:1~9")
+        exit(0)
+    if n<=0:
+        print("请给出合理的题目个数")
+        exit(0)
+    book = open("question.txt", mode="w", encoding="UTF-8")
+    answer = open("answer.txt", mode="w", encoding="UTF-8")
+    while n > 0:
+        math_random = []
+        math_symbol = ["+", "-", "*", "/"]
+        math_symbol.remove(random.choice(math_symbol))  # 随机去掉一种算术符
+        random_length = random.randint(3, 7)      #用于控制生成的式子的随机长度
+
+        while random_length > 0:  # 需判定‘r'是否为整数，正数
+            if len(math_random) == 0:  # 第一次生成随机数
+                math_random.append(str(random.randint(0, r)))        #sum_math需要的参数类型为str
+                random_length -= 1
+                continue
+            else:  # 不是第一次生成随机数
+                symbol = random.choice(math_symbol)  # 随机生成符号
+                if symbol == '-':  # 计算表达式的和，确保不出现负数
+                    sum_arr = int(infix_converts_suffixes(math_random)) # ????????比如：3*4-1   3*4-1*99
+                    if sum_arr < 0 :  # 若小于0，则让随机数等于0
+                        temp_num = '0'
+                    else:
+                        if r>int(sum_arr):          #防止生成大于’9‘的数
+                            temp_num = str(random.randint(0, int(sum_arr))) # 生成一个比总和小的数
+                        else:
+                            temp_num = str(random.randint(0, r))    #sum_math需要的参数类型为str
+                elif symbol == '/':
+                    temp_num = str(random.randint(1, r))  # 分母不为'0'或'1'
+                elif symbol == '*':  # 检查是否会出现‘-’被乘大的现象
+                    temp_num = str(random.randint(1, r))
+                    math_random.append(symbol)  # 插入符号
+                    math_random.append(temp_num)  # 插入生成数
+                    if infix_converts_suffixes(math_random) < 0:  # 若为小于0的数，则改变符号
+                        symbol = '+'
+                    math_random.pop()
+                    math_random.pop()
+                else:
+                    temp_num = str(random.randint(0, r))
+            if len(math_random) != 1 and (symbol == '*' or symbol == '/') and (
+                    1 == random.choice([1, 2])):  # 随机生成括号并且保证不冗杂
+                flag = 0  # temp标记是否能插入括号
+                plu = 0  # plu表示括号匹配
+                for i in range(0, len(math_random)):
+                    if (math_random[i] == '('):
+                        plu += 1
+                    if (math_random[i] == ')'):
+                        plu -= 1
+                    if plu == 0 and (math_random[i] == '-' or math_random[i] == '+'):
+                        flag += 1
+                if flag > 0:
+                    math_random.append(')')  # 插入括号
+                    math_random.insert(0, '(')
+            math_random.append(symbol)  # 插入符号
+            math_random.append(temp_num)  # 插入生成数
+            random_length -= 1
+
+        print("算式：", end=' ')       #写入和打印
+        for i in math_random:
+            print(i, end='')
+            book.write(i)
+        book.write('\n')
+        print()
+        print("答案 ", infix_converts_suffixes(math_random))
+        if (infix_converts_suffixes(math_random) // 1) !=  infix_converts_suffixes(math_random) :
+            temp = infix_converts_suffixes(math_random)
+            if temp//1 != 0:
+                answer.write(str(temp//1))
+                answer.write("'")
+            answer.write(str(temp%1))
+        else:
+            answer.write(str(infix_converts_suffixes(math_random)))
+        answer.write('\n')
+        print()
+        n-=1
+    book.close()
+    answer.close()
+class App:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("四则运算生成器")
+
+
+        self.input_data=0
+        self.create_initial_ui()
+
+    def create_initial_ui(self):
+        # 用于存放输入的框
+        self.entry_answer = []
+        # 用于存放标题
+        self.entry_answer_labels = []
+        # 用于存放原始答案的字典
+        self.answers_o = {}
+        # 用于存放用户的提交答案
+        self.answers = {}
+
+        self.i = 0
+
+        self.label = tk.Label(self.root, text="请输入题目数量")
+        self.label.pack()
+        self.entry = tk.Entry(self.root)
+        self.entry.pack()
+        self.question = tk.Button(self.root, text="生成题目", command=self.merge_generate)
+        self.question.pack()
+
+        self.label = tk.Label(self.root, text="题目展示")
+        self.label.pack()
+        self.question_table=tk.Text(self.root)
+        self.question_table.pack()
+        self.question_table.configure(width=60, height=15)
+
+        self.label = tk.Label(self.root, text="结果显示")
+        self.label.pack()
+        self.result_table = tk.Text(self.root)
+        self.result_table.pack()
+        self.result_table.configure(width=60,height=15)
+
+        # button_font = font.Font(family='Arial', size=14, weight='bold')
+        # self.button_submit = tk.Button(self.root, text="提交答案", command=self.merge_submit)
+        # self.button_submit.pack()
+
+    def reset_ui(self):
+        # 销毁所有现有组件
+        if len(self.root.winfo_children())>7:
+            for widget in self.root.winfo_children():
+                widget.destroy()
+            # 重新创建初始界面
+            self.create_initial_ui()
+        else :
+            print("没有成功销毁")
+# 输入需要的题目数量
+    def input_num(self):
+        input_text = self.entry.get()
+        print(f'{input_text}')
+        try:
+            input_int = int(input_text)
+            self.input_data = input_int
+            self.label.config(text=f"你输入的内容是整数：{input_int}")
+        except ValueError:
+            self.label.config(text=f"你输入的内容不是有效的整数。")
+# 获取输入的答案
+    def input_answer(self):
+        all_filled=True
+        for i,entry_1 in enumerate(self.entry_answer):
+            answer=entry_1.get()
+            if not answer:
+                all_filled=False
+                break
+            else :
+                self.answers[i+1]=answer.strip()
+        if all_filled:
+            ######################
+            print(f"生成的字典为：{self.answers}")
+        else :
+            self.answers={}
+            print("请输入全部答案再提交")
+        return all_filled
+# 比较原始答案和用户输入的区别
+    def compare_answer(self,answers,answers_o):
+        if not isinstance(answers, dict) or not isinstance(answers_o, dict):
+            raise ValueError("输入必须是字典类型。")
+        if not answers or not answers_o:
+            return []
+        wrong_answer=[]
+        correct_answer=[]
+        for key in answers_o.keys() & answers.keys():
+            answers1=answers_o[key]
+            answers2=answers[key]
+            if answers1 !=answers2:
+                wrong_answer.append(key)
+            else :
+                correct_answer.append(key)
+        return wrong_answer,correct_answer
+# 生成需要的答题区域
+    def answer_table(self):
+        for _ in range(1, self.input_data + 1):
+            if self.i % 5 == 0:
+                # 创建一个新的框架用于每 5 个框换一行
+                frame = tk.Frame(self.root)
+                frame.pack()
+            else:
+                frame = self.get_last_frame()
+
+            self.label_answer = tk.Label(frame, text=f"题目{self.i+1}：")
+            self.label_answer.pack(side=tk.LEFT)
+
+            self.entry_table = tk.Entry(frame)
+            # 横向排列输入框
+            self.entry_table.pack(side=tk.LEFT)
+
+            self.entry_answer.append(self.entry_table)
+            self.entry_answer_labels.append(self.label_answer)
+
+            self.i+=1
+        self.button_submit = tk.Button(self.root, text="提交答案", command=self.merge_submit)
+        self.button_submit.pack()
+        self.i=0
+
+# 排版
+    def get_last_frame(self):
+        # 获取根窗口的最后一个子组件，如果是 Frame 类型则返回，否则返回 None
+        children = self.root.winfo_children()
+        if children:
+            last_child = children[-1]
+            if isinstance(last_child, tk.Frame):
+                return last_child
+        return None
+
+# 调用外部的生成题目的函数
+    def generate_question(self):
+        # 调用外部函数
+        random_generation(9,self.input_data)
+        ## 将输入的input_data作为题目数量输入
+        file_path_question='question.txt'
+        if not file_path_question:
+            print("未找到题目文件")
+        try:
+            with open(file_path_question,'r') as file:
+                content=file.read()
+                # 清除展示台的东西
+                self.question_table.delete(1.0,tk.END)
+                # 展示题目
+                self.question_table.insert(tk.END,content)
+        except Exception as e:
+            self.label.config(text=f"发生错误：{e}")
+        # 清空输入框内容
+        self.entry.delete(0, tk.END)
+
+    def generate_answer(self):
+        # 调用外部函数
+        file_path_question = 'answer.txt'
+        if not file_path_question:
+            print("未找到答案文件")
+        try:
+            with open(file_path_question, 'r') as file:
+                # 将内容中的所有空白字符都替换为空字符串
+                key = 1
+                for answer in file:
+                    self.answers_o[key] = answer.strip()
+                    key += 1
+        except Exception as e:
+            print(f"发生错误：{e}")
+        return self.answers_o
+    # 整合生成题目button
+    def merge_generate(self):
+        self.input_num()
+        self.reset_ui()
+        self.generate_question()
+        self.generate_answer()
+        self.answer_table()
+    # 整合提交答案
+    def merge_submit(self):
+
+        if self.input_answer():
+
+            print(self.answers)
+            print(self.answers_o)
+
+            wrong_result,correct_result=self.compare_answer(self.answers,self.answers_o)
+            # print(f"错误的题号为{wrong_result}")
+            # print(f"正确的题号为{correct_result}")
+            self.result_table.delete(1.0,tk.END)
+            self.result_table.insert(tk.END,f"Wrong:{len(wrong_result)} {wrong_result}\n")
+            self.result_table.insert(tk.END, f"Correct:{len(wrong_result)} {correct_result}")
+            with open('Grade.txt', 'w') as file:
+                file.write(f"Wrong:{len(wrong_result)} {wrong_result}\n")
+                file.write(f"Correct:{len(correct_result)} {correct_result}")
+        else :
+            self.label.config(text=f"请输入全部答案再提交")
+
+    def run(self):
+        self.root.mainloop()
+
+app = App()
+app.run()
+
+# button-生成题目--获取输入的题目数--generate--生成答题框
+# button-提交答案--获取输入的答案--对比答案--展示错误题目
